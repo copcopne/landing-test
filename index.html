@@ -175,56 +175,54 @@
     </div>
     <script>
         window.onload = function () {
-            const userAgent = navigator.userAgent.toLowerCase();
-            const isAndroid = /android/i.test(userAgent);
-            const isIOS = /ipad|iphone|ipod/.test(userAgent) && !window.MSStream;
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isAndroid = /android/i.test(userAgent);
+    const isIOS = /ipad|iphone|ipod/.test(userAgent) && !window.MSStream;
 
-            const config = {
-                scheme: "vidimi://vidimi.vn",
-                package: "vn.vidimi.app.client",
-                androidStore: "https://play.google.com/store/apps/details?id=vn.vidimi.app.client",
-                iosStore: "https://apps.apple.com/app/id6743361451"
-            };
+    const config = {
+        scheme: "vidimi://vidimi.vn",
+        package: "vn.vidimi.app.client",
+        androidStore: "market://details?id=vn.vidimi.app.client", 
+        androidStoreWeb: "https://play.google.com/store/apps/details?id=vn.vidimi.app.client",
+        iosStore: "https://apps.apple.com/app/id6743361451"
+    };
 
-            // Hàm phụ để kiểm tra xem trang web có còn focus không
-            // Nếu vẫn còn focus tức là việc chuyển hướng app thất bại
-            const checkRedirection = (storeUrl) => {
-                const start = Date.now();
-                setTimeout(() => {
-                    if (Date.now() - start < 3000) {
-                        window.location.href = storeUrl;
-                    }
-                }, 2500);
-            };
-
-            if (isAndroid) {
-                // LỚP 1: Dùng Intent cho Chrome trên Android (Chuẩn nhất cho đa số máy)
-                // Intent giúp tự mở app nếu đã cài, hoặc nhảy Store nếu chưa cài
-                const intentUrl = `intent://vidimi.vn/#Intent;scheme=vidimi;package=${config.package};S.browser_fallback_url=${encodeURIComponent(config.androidStore)};end`;
-
-                // LỚP 2: Đặc trị các trình duyệt trong App (Facebook, Zalo, Scanner, v.v.)
-                const isInsideApp = /fb_iab|fbav|instagram|messenger|micromessenger|xiaomi|line/i.test(userAgent);
-
-                if (isInsideApp) {
-                    // Nếu ở trong app, ưu tiên link Store trực tiếp vì Intent thường bị chặn
-                    window.location.href = config.androidStore;
-                } else {
-                    // Ở trình duyệt ngoài (Chrome, Samsung Browser) thì dùng Intent
-                    window.location.href = intentUrl;
-                }
-
-                // LỚP 3: Cú chốt (Dự phòng cuối cùng)
-                // Nếu sau 3s mà người dùng vẫn ở lại trang web này (do Intent lỗi/bị chặn)
-                // thì ép nhảy sang link Web của Play Store.
-                checkRedirection(config.androidStore);
-
-            } else if (isIOS) {
-                // iOS: Thử mở scheme trước
-                window.location.href = config.scheme;
-                // Nếu không mở được app (chưa cài) thì nhảy Store
-                checkRedirection(config.iosStore);
+    const checkRedirection = (storeUrl, fallbackWebUrl) => {
+        const start = Date.now();
+        setTimeout(() => {
+            if (document.hidden || document.webkitHidden) {
+                return;
             }
-        };
+            if (Date.now() - start < 3500) {
+                window.location.href = storeUrl;
+                
+                if (fallbackWebUrl) {
+                    setTimeout(() => {
+                        if (!document.hidden) window.location.href = fallbackWebUrl;
+                    }, 500);
+                }
+            }
+        }, 2500);
+    };
+
+    if (isAndroid) {
+        const isInsideApp = /fb_iab|fbav|instagram|messenger|micromessenger|line|zalo/i.test(userAgent);
+
+        if (isInsideApp) {
+            window.location.href = config.androidStoreWeb;
+        } else {
+            const intentUrl = `intent://vidimi.vn/#Intent;scheme=vidimi;package=${config.package};S.browser_fallback_url=${encodeURIComponent(config.androidStoreWeb)};end`;
+            window.location.href = intentUrl;
+            
+            // Lập lịch: Nếu sau 2.5s mà Intent xịt, nhảy sang Store
+            checkRedirection(config.androidStore, config.androidStoreWeb);
+        }
+
+    } else if (isIOS) {
+        window.location.href = config.scheme;
+        checkRedirection(config.iosStore);
+    }
+};
     </script>
 
 </body>
